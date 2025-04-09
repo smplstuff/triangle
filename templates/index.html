@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>triangle - media downloader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Add Space Grotesk font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            dark: '#121212',
+            darker: '#0a0a0a',
+            highlight: '#333333',
+            accent: '#8B5CF6' // Purple accent color
+          },
+          fontFamily: {
+            'space': ['"Space Grotesk"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      font-family: 'Space Grotesk', sans-serif;
+      text-transform: lowercase;
+    }
+    .input-container {
+      position: relative;
+      border-radius: 0.375rem;
+      transition: all 0.3s ease;
+    }
+    .input-container.focused {
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.5);
+    }
+    .input-field {
+      background-color: rgba(30, 30, 30, 0.6);
+      border: 1px solid #333;
+      transition: all 0.3s ease;
+      border-radius: 0.375rem;
+    }
+    .input-field:focus {
+      border-color: #555;
+      outline: none;
+    }
+    .btn {
+      background-color: rgba(30, 30, 30, 0.8);
+      transition: all 0.2s;
+      border: 1px solid #444;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn:hover {
+      background-color: rgba(50, 50, 50, 0.8);
+      transform: translateY(-1px);
+      border-color: #555;
+    }
+    .btn:hover::after {
+      opacity: 1;
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .btn.active {
+      background-color: rgba(139, 92, 246, 0.2);
+      border-color: rgba(139, 92, 246, 0.5);
+    }
+    .modal {
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+      opacity: 0;
+      transform: scale(0.95);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .modal.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .modal-content {
+      background-color: #121212;
+      border: 1px solid #333;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+    .format-btn {
+      background-color: rgba(30, 30, 30, 0.8);
+      transition: all 0.2s;
+      border: 1px solid #444;
+    }
+    .format-btn:hover {
+      background-color: rgba(50, 50, 50, 0.8);
+    }
+    .download-icon-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0;
+      transition: all 0.3s ease;
+      background-color: rgba(30, 30, 30, 0.8);
+      border: 1px solid #444;
+      border-radius: 0.375rem;
+      padding: 6px;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .download-icon-btn:hover {
+      background-color: rgba(50, 50, 50, 0.8);
+      border-color: #555;
+    }
+    .download-icon-btn.visible {
+      opacity: 1;
+    }
+    /* Custom dropdown */
+    .custom-dropdown {
+      position: relative;
+    }
+    .dropdown-options {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background-color: #121212;
+      border: 1px solid #444;
+      border-radius: 0.375rem;
+      margin-top: 4px;
+      z-index: 10;
+      display: none;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .dropdown-options.show {
+      display: block;
+    }
+    .dropdown-option {
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .dropdown-option:hover {
+      background-color: rgba(50, 50, 50, 0.8);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #444;
+    }
+    /* Pulse animation for active buttons */
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+    }
+    .pulse {
+      animation: pulse 1.5s infinite;
+    }
+    /* Loading spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    /* Tooltip styles - modern look */
+    .tooltip-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip-wrapper .tooltip {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      z-index: 100;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background-color: rgba(50,50,50,0.9);
+      color: #fff;
+      text-align: center;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+      min-width: 300px;
+      max-width: 400px;
+      word-wrap: break-word;
+      pointer-events: none;
+    }
+    .tooltip-wrapper:hover .tooltip {
+      visibility: visible;
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .tooltip-wrapper .tooltip::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: rgba(50,50,50,0.9) transparent transparent transparent;
+    }
+    .cursor-help {
+      cursor: help !important;
+    }
+    /* Fix tooltip overflow for filename format buttons */
+    .btn-filename-format {
+      overflow: visible !important;
+    }
+    /* Filename preview styles */
+    #filename-preview div {
+      transition: all 0.2s ease;
+      border-radius: 0.375rem;
+    }
+    #filename-preview .text-xs {
+      font-size: 0.75rem;
+      line-height: 1rem;
+      color: #888;
+    }
+    .bg-darker {
+      background-color: #0a0a0a;
+    }
+    /* Lucide icons */
+    .lucide-icon {
+      color: rgba(139, 92, 246, 0.8);
+    }
+  </style>
+  <!-- Add Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between py-8 px-4 font-space">
+  <!-- Main Content -->
+  <main class="w-full max-w-xl flex flex-col items-center mt-16">
+    <h1 class="text-3xl font-medium mb-16 tracking-tight">triangle</h1>
+    <div class="w-full">
+      <div class="flex items-center text-gray-400 text-sm mb-2">
+        <span class="mr-2">🔗</span>
+        <span>paste the link here</span>
+      </div>
+      <div class="w-full relative input-container" id="input-container">
+        <input type="text" id="video-url" class="w-full p-3 rounded-md input-field text-white pr-12" placeholder="">
+        <div id="download-icon" class="download-icon-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </div>
+      </div>
+      <div class="flex justify-between mt-4">
+        <button id="paste-btn" class="btn flex items-center px-4 py-2 rounded-md">
+          <span class="mr-2">📋</span>
+          <span>paste</span>
+        </button>
+        <div class="flex space-x-2">
+          <button id="auto-btn" class="btn flex items-center px-4 py-2 rounded-md relative active">
+            <span class="mr-2">⭐</span>
+            <span>auto</span>
+          </button>
+          <button id="audio-btn" class="btn flex items-center px-4 py-2 rounded-md relative">
+            <span class="mr-2">🎵</span>
+            <span>audio</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <!-- Footer -->
+  <footer class="w-full max-w-xl flex justify-center mt-16">
+    <div class="flex space-x-2">
+      <button id="about-btn" class="btn flex items-center px-4 py-2 rounded-md">
+        <span class="mr-2">🧩</span>
+        <span>about</span>
+      </button>
+      <button id="donate-btn" class="btn flex items-center px-4 py-2 rounded-md">
+        <span class="mr-2">💖</span>
+        <span>donate</span>
+      </button>
+      <button id="settings-btn" class="btn flex items-center px-4 py-2 rounded-md">
+        <span class="mr-2">⚙️</span>
+        <span>settings</span>
+      </button>
+    </div>
+  </footer>
+  <!-- Modal Templates -->
+  <div id="about-modal" class="fixed inset-0 flex items-center justify-center z-50 modal hidden">
+    <div class="modal-content rounded-md p-6 max-w-md w-full mx-4">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-medium">about triangle</h2>
+        <button class="close-modal text-gray-400 hover:text-white">✕</button>
+      </div>
+      <div class="text-gray-300">
+        <p class="mb-3">triangle is a fast, simple media downloader that lets you save videos and audio from multiple sources.</p>
+        <p class="mb-3">features:</p>
+        <ul class="list-disc pl-5 mb-3">
+          <li>download videos in various qualities</li>
+          <li>extract audio from media</li>
+          <li>no ads or tracking</li>
+          <li>blazing fast downloads</li>
+        </ul>
+        <div class="mb-3">
+          <div id="supported-sites-content">
+            <p>supported sites:</p>
+            <div class="mt-2">
+              <div class="flex justify-between mb-2">
+                <span>YouTube</span>
+                <span class="text-gray-500 text-sm">(video & audio)</span>
+              </div>
+              <div class="flex justify-between mb-2">
+                <span>SoundCloud</span>
+                <span class="text-gray-500 text-sm">(audio only)</span>
+              </div>
+              <div class="flex justify-between">
+                <span>TikTok</span>
+                <span class="text-gray-500 text-sm">(video & photo)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p>built with ❤️ by the netstuff team</p>
+        <p class="text-sm mt-2 text-gray-500">powered by flask and yt-dlp</p>
+      </div>
+    </div>
+  </div>
+  <div id="donate-modal" class="fixed inset-0 flex items-center justify-center z-50 modal hidden">
+    <div class="modal-content rounded-md p-6 max-w-md w-full mx-4">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-medium">support triangle</h2>
+        <button class="close-modal text-gray-400 hover:text-white">✕</button>
+      </div>
+      <div class="text-gray-300">
+        <p class="mb-3">if you find triangle useful, please consider supporting the project.</p>
+        <p class="mb-3">your donations help cover server costs and development time.</p>
+        <div class="space-y-3">
+          <div class="btn px-4 py-3 flex items-start gap-3 rounded-md cursor-pointer donation-card">
+            <div class="mt-1">
+              <i data-lucide="bitcoin" class="text-gray-400 w-5 h-5"></i>
+            </div>
+            <div class="flex flex-col text-sm">
+              <span class="font-medium text-gray-100">bitcoin</span>
+              <span id="btc-address" class="text-xs text-gray-400 break-all">bc1qxyz123456789abcdefg</span>
+            </div>
+          </div>
+          <div class="btn px-4 py-3 flex items-start gap-3 rounded-md cursor-pointer donation-card">
+            <div class="mt-1">
+              <i data-lucide="coins" class="text-gray-400 w-5 h-5"></i>
+            </div>
+            <div class="flex flex-col text-sm">
+              <span class="font-medium text-gray-100">ethereum</span>
+              <span id="eth-address" class="text-xs text-gray-400 break-all">0xabcdef1234567890abcdef</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="settings-modal" class="fixed inset-0 flex items-center justify-center z-50 modal hidden">
+    <div class="modal-content rounded-md p-6 max-w-md w-full mx-4">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-medium">settings</h2>
+        <button class="close-modal text-gray-400 hover:text-white">✕</button>
+      </div>
+      <div class="text-gray-300">
+        <div class="mb-4">
+          <label class="block mb-2 flex items-center gap-1">
+            default download type
+            <div class="tooltip-wrapper inline-block">
+              <svg class="w-4 h-4 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20.5C6.477 20.5 2 16.023 2 10.5S6.477.5 12 .5s10 4.477 10 10-4.477 10-10 10z"></path>
+              </svg>
+              <div class="tooltip">
+                 Choose whether to default to video downloads or extract audio, based on your preference.
+              </div>
+            </div>
+          </label>
+          <div class="flex space-x-2">
+            <button class="btn px-4 py-2 rounded-md w-full active" data-value="video">video</button>
+            <button class="btn px-4 py-2 rounded-md w-full" data-value="audio">audio</button>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 flex items-center gap-1">
+            preferred quality
+            <div class="tooltip-wrapper inline-block">
+              <svg class="w-4 h-4 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20.5C6.477 20.5 2 16.023 2 10.5S6.477.5 12 .5s10 4.477 10 10-4.477 10-10 10z"></path>
+              </svg>
+              <div class="tooltip">
+                 Select your default download quality. This setting is stored in your browser and can be changed anytime.
+              </div>
+            </div>
+          </label>
+          <div class="custom-dropdown w-full">
+            <button id="quality-dropdown-btn" class="btn w-full text-left px-4 py-2 rounded-md flex justify-between items-center">
+              <span id="selected-quality">1080p</span>
+              <span>▼</span>
+            </button>
+            <div id="quality-options" class="dropdown-options">
+              <div class="dropdown-option" data-value="1080p">1080p</div>
+              <div class="dropdown-option" data-value="720p">720p</div>
+              <div class="dropdown-option" data-value="480p">480p</div>
+              <div class="dropdown-option" data-value="360p">360p</div>
+              <div class="dropdown-option" data-value="144p">144p</div>
+            </div>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block mb-2 flex items-center gap-1">
+            filename format
+            <div class="tooltip-wrapper inline-block">
+              <svg class="w-4 h-4 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20.5C6.477 20.5 2 16.023 2 10.5S6.477.5 12 .5s10 4.477 10 10-4.477 10-10 10z"></path>
+              </svg>
+              <div class="tooltip" style="min-width: 300px;">
+                Choose how downloaded files are named. You can select a default or detailed naming format.
+              </div>
+            </div>
+          </label>
+          <div class="flex space-x-2">
+            <button class="btn px-4 py-2 rounded-md w-full btn-filename-format" data-value="default">
+              <span>default</span>
+            </button>
+            <button class="btn px-4 py-2 rounded-md w-full btn-filename-format" data-value="detailed">
+              <span>detailed</span>
+            </button>
+          </div>
+          <div class="mt-4 space-y-3" id="filename-preview">
+            <div class="default-preview space-y-3">
+              <div class="btn px-4 py-3 flex items-start gap-3">
+                <div class="mt-1">
+                  <i data-lucide="video" class="text-gray-400 w-5 h-5"></i>
+                </div>
+                <div class="flex flex-col text-sm">
+                  <span class="font-medium text-gray-100">Rick Astley - Never Gonna Give You Up (Official Music Video).mp4</span>
+                  <span class="text-gray-400 text-xs">video example</span>
+                </div>
+              </div>
+              <div class="btn px-4 py-3 flex items-start gap-3">
+                <div class="mt-1">
+                  <i data-lucide="music" class="text-gray-400 w-5 h-5"></i>
+                </div>
+                <div class="flex flex-col text-sm">
+                  <span class="font-medium text-gray-100">Rick Astley - Never Gonna Give You Up (Official Music Video).mp3</span>
+                  <span class="text-gray-400 text-xs">audio example</span>
+                </div>
+              </div>
+            </div>
+            <div class="detailed-preview hidden space-y-3">
+              <div class="btn px-4 py-3 flex items-start gap-3">
+                <div class="mt-1">
+                  <i data-lucide="video" class="text-gray-400 w-5 h-5"></i>
+                </div>
+                <div class="flex flex-col text-sm">
+                  <span class="font-medium text-gray-100">youtube-dQw4w9WgXcQ-1080p-video.mp4</span>
+                  <span class="text-gray-400 text-xs">video example</span>
+                </div>
+              </div>
+              <div class="btn px-4 py-3 flex items-start gap-3">
+                <div class="mt-1">
+                  <i data-lucide="music" class="text-gray-400 w-5 h-5"></i>
+                </div>
+                <div class="flex flex-col text-sm">
+                  <span class="font-medium text-gray-100">youtube-dQw4w9WgXcQ-192kbps-audio.mp3</span>
+                  <span class="text-gray-400 text-xs">audio example</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center">
+          <button id="auto-copy-toggle" class="btn px-4 py-2 rounded-md mr-2 min-w-[80px] text-center" data-active="false">off</button>
+          <label for="auto-copy-toggle" class="flex items-center gap-1">
+            auto-copy download links
+            <div class="tooltip-wrapper inline-block">
+              <svg class="w-4 h-4 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20.5C6.477 20.5 2 16.023 2 10.5S6.477.5 12 .5s10 4.477 10 10-4.477 10-10 10z"></path>
+              </svg>
+              <div class="tooltip">
+                 When enabled, download links will be auto-copied to your clipboard after download.
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    // Combined url_checker.js and main.js
+
+    // Utility module to check if a URL is from a supported site (YouTube or SoundCloud)
+    function isSupportedUrl(url) {
+      const ytRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w\-]+/i;
+      const scRegex = /^(https?:\/\/)?(www\.)?soundcloud\.com\/[\w._-]+\/[\w._-]+/i;
+      const ttRegex = /^(https?:\/\/)?(www\.)?tiktok\.com\/.*\/(video|photo)\/\d+/i;
+      return ytRegex.test(url) || scRegex.test(url) || ttRegex.test(url);
+    }
+
+    // LocalStorageManager and preferences definitions
+    const LocalStorageManager = {
+      getItem: (key, defaultValue = null) => {
+        try {
+          const value = localStorage.getItem(key);
+          return value !== null ? JSON.parse(value) : defaultValue;
+        } catch (error) {
+          console.error(`Error reading ${key} from localStorage:`, error);
+          return defaultValue;
+        }
+      },
+      setItem: (key, value) => {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+          console.error(`Error saving ${key} to localStorage:`, error);
+        }
+      }
+    };
+
+    const QualityPreferences = {
+      DEFAULT_QUALITY: '1080p',
+      QUALITY_STORAGE_KEY: 'triangle_preferred_quality',
+      getPreferredQuality: () => {
+        return LocalStorageManager.getItem(QualityPreferences.QUALITY_STORAGE_KEY, QualityPreferences.DEFAULT_QUALITY);
+      },
+      setPreferredQuality: (quality) => {
+        LocalStorageManager.setItem(QualityPreferences.QUALITY_STORAGE_KEY, quality);
+      }
+    };
+
+    const FilenameFormatPreferences = {
+      DEFAULT_FORMAT: 'default',
+      FILENAME_FORMAT_STORAGE_KEY: 'triangle_filename_format',
+      getPreferredFilenameFormat: () => {
+        return LocalStorageManager.getItem(FilenameFormatPreferences.FILENAME_FORMAT_STORAGE_KEY, FilenameFormatPreferences.DEFAULT_FORMAT);
+      },
+      setPreferredFilenameFormat: (format) => {
+        LocalStorageManager.setItem(FilenameFormatPreferences.FILENAME_FORMAT_STORAGE_KEY, format);
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const videoUrlInput = document.getElementById('video-url');
+      const inputContainer = document.getElementById('input-container');
+      const downloadIcon = document.getElementById('download-icon');
+      const pasteBtn = document.getElementById('paste-btn');
+      const autoBtn = document.getElementById('auto-btn');
+      const audioBtn = document.getElementById('audio-btn');
+      let currentMode = 'video';
+
+      const aboutBtn = document.getElementById('about-btn');
+      const donateBtn = document.getElementById('donate-btn');
+      const settingsBtn = document.getElementById('settings-btn');
+      const aboutModal = document.getElementById('about-modal');
+      const donateModal = document.getElementById('donate-modal');
+      const settingsModal = document.getElementById('settings-modal');
+      const closeButtons = document.querySelectorAll('.close-modal');
+      const qualityDropdownBtn = document.getElementById('quality-dropdown-btn');
+      const qualityOptions = document.getElementById('quality-options');
+      const qualityOptionItems = document.querySelectorAll('#quality-options .dropdown-option');
+      const autoCopyToggle = document.getElementById('auto-copy-toggle');
+      const filenameFormatButtons = document.querySelectorAll('#settings-modal .btn-filename-format');
+
+      videoUrlInput.addEventListener('input', () => {
+        const url = videoUrlInput.value.trim();
+        if (url !== '' && isSupportedUrl(url)) {
+          downloadIcon.classList.add('visible');
+          autoBtn.classList.add('pulse');
+          audioBtn.classList.add('pulse');
+          if (url.includes('soundcloud.com')) {
+            setDownloadMode('audio');
+          } else if (url.includes('tiktok.com')) {
+            setDownloadMode('video');
+          }
+        } else {
+          downloadIcon.classList.remove('visible');
+          autoBtn.classList.remove('pulse');
+          audioBtn.classList.remove('pulse');
+        }
+      });
+
+      videoUrlInput.addEventListener('focus', () => {
+        inputContainer.classList.add('focused');
+      });
+      videoUrlInput.addEventListener('blur', () => {
+        inputContainer.classList.remove('focused');
+      });
+      downloadIcon.addEventListener('click', () => {
+        const url = videoUrlInput.value.trim();
+        if (url !== '' && isSupportedUrl(url)) {
+          downloadFile(url, currentMode);
+        }
+      });
+
+      pasteBtn.addEventListener('click', async () => {
+        try {
+          const text = await navigator.clipboard.readText();
+          videoUrlInput.value = text;
+          videoUrlInput.dispatchEvent(new Event('input'));
+        } catch (err) {
+          console.error('Failed to read clipboard: ', err);
+        }
+      });
+
+      autoBtn.addEventListener('click', () => setDownloadMode('video'));
+      audioBtn.addEventListener('click', () => setDownloadMode('audio'));
+      function setDownloadMode(mode) {
+        currentMode = mode;
+        if (mode === 'video') {
+          autoBtn.classList.add('active');
+          audioBtn.classList.remove('active');
+        } else {
+          audioBtn.classList.add('active');
+          autoBtn.classList.remove('active');
+        }
+      }
+
+      qualityDropdownBtn.addEventListener('click', () => {
+        qualityOptions.classList.toggle('show');
+      });
+      qualityOptionItems.forEach(option => {
+        option.addEventListener('click', () => {
+          const selectedQualityText = option.textContent;
+          document.getElementById('selected-quality').textContent = selectedQualityText;
+          qualityOptions.classList.remove('show');
+          QualityPreferences.setPreferredQuality(selectedQualityText);
+        });
+      });
+      document.addEventListener('click', (e) => {
+        if (!qualityDropdownBtn.contains(e.target) && !qualityOptions.contains(e.target)) {
+          qualityOptions.classList.remove('show');
+        }
+      });
+
+      autoCopyToggle.addEventListener('click', () => {
+        const isActive = autoCopyToggle.getAttribute('data-active') === 'true';
+        if (isActive) {
+          autoCopyToggle.setAttribute('data-active', 'false');
+          autoCopyToggle.textContent = 'off';
+          autoCopyToggle.classList.remove('active');
+        } else {
+          autoCopyToggle.setAttribute('data-active', 'true');
+          autoCopyToggle.textContent = 'on';
+          autoCopyToggle.classList.add('active');
+        }
+      });
+
+      filenameFormatButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          this.parentElement.querySelectorAll('.btn-filename-format').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          this.classList.add('active');
+          const value = this.getAttribute('data-value');
+          FilenameFormatPreferences.setPreferredFilenameFormat(value);
+        });
+      });
+
+      // Initialize Lucide icons
+      lucide.createIcons();
+
+      // Filename format preview handling
+      filenameFormatButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const isDetailed = this.getAttribute('data-value') === 'detailed';
+          document.querySelector('.default-preview').classList.toggle('hidden', isDetailed);
+          document.querySelector('.detailed-preview').classList.toggle('hidden', !isDetailed);
+        });
+      });
+
+      // Initialize preferred quality from localStorage
+      const storedQuality = QualityPreferences.getPreferredQuality();
+      document.getElementById('selected-quality').textContent = storedQuality;
+
+      // Initialize filename format from localStorage
+      const storedFilenameFormat = FilenameFormatPreferences.getPreferredFilenameFormat();
+      document.querySelectorAll('.btn-filename-format').forEach(button => {
+        button.classList.toggle('active', button.getAttribute('data-value') === storedFilenameFormat);
+      });
+
+      // Modal functions and event listeners
+      function openModal(modal) {
+        aboutModal.classList.add('hidden');
+        donateModal.classList.add('hidden');
+        settingsModal.classList.add('hidden');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.add('show');
+        }, 10);
+      }
+      function closeModal(modal) {
+        modal.classList.remove('show');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200);
+      }
+      function closeAllModals() {
+        if (!aboutModal.classList.contains('hidden')) closeModal(aboutModal);
+        if (!donateModal.classList.contains('hidden')) closeModal(donateModal);
+        if (!settingsModal.classList.contains('hidden')) closeModal(settingsModal);
+      }
+      aboutBtn.addEventListener('click', () => openModal(aboutModal));
+      donateBtn.addEventListener('click', () => openModal(donateModal));
+      settingsBtn.addEventListener('click', () => openModal(settingsModal));
+      closeButtons.forEach(button => {
+        button.addEventListener('click', closeAllModals);
+      });
+      window.addEventListener('click', (e) => {
+        if (e.target === aboutModal || e.target === donateModal || e.target === settingsModal) {
+          closeAllModals();
+        }
+      });
+
+      const settingsButtons = document.querySelectorAll('#settings-modal .btn[data-value]');
+      settingsButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          this.parentElement.querySelectorAll('.btn').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          this.classList.add('active');
+          const value = this.getAttribute('data-value');
+          if (value === 'video' || value === 'audio') {
+            setDownloadMode(value);
+          }
+        });
+      });
+
+      // Error Popup Module
+      function createErrorModal() {
+        const modal = document.createElement('div');
+        modal.id = 'error-modal';
+        modal.className = 'fixed inset-0 flex items-center justify-center z-50 modal hidden';
+        modal.innerHTML = `
+          <div class="modal-content rounded-md p-6 max-w-md w-full mx-4 border border-red-500 bg-darker">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-medium">error</h2>
+              <button id="close-error-modal" class="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div id="error-message" class="text-gray-300"></div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        const closeBtn = modal.querySelector('#close-error-modal');
+        closeBtn.addEventListener('click', closeErrorModal);
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            closeErrorModal();
+          }
+        });
+      }
+      function showErrorModal(message) {
+        let modal = document.getElementById('error-modal');
+        if (!modal) {
+          createErrorModal();
+          modal = document.getElementById('error-modal');
+        }
+        const messageEl = modal.querySelector('#error-message');
+        messageEl.innerText = message;
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          modal.classList.add('show');
+        }, 10);
+      }
+      function closeErrorModal() {
+        const modal = document.getElementById('error-modal');
+        if (!modal) return;
+        modal.classList.remove('show');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200);
+      }
+      window.showErrorModal = showErrorModal;
+
+      // Download Handler Module
+      function showSpinner(element) {
+        if (!element._originalContent) {
+          element._originalContent = element.innerHTML;
+        }
+        element.innerHTML = `<div class="loading-spinner" style="width:16px;height:16px;"></div>`;
+      }
+      function resetDownloadIcon(element) {
+        element.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        `;
+      }
+      function downloadFile(url, type) {
+        const quality = document.getElementById('selected-quality').textContent.trim();
+        const filenameFormat = FilenameFormatPreferences.getPreferredFilenameFormat();
+        showSpinner(downloadIcon);
+        const apiUrl = `/api/direct-download?url=${encodeURIComponent(url)}&type=${type}&quality=${encodeURIComponent(quality)}&filename_format=${encodeURIComponent(filenameFormat)}`;
+        
+        fetch(apiUrl)
+          .then(response => {
+            const contentType = response.headers.get('Content-Type') || '';
+            if (!response.ok) {
+              if (contentType.includes('application/json')) {
+                return response.json().then(errorData => {
+                  if (response.status === 400 && errorData.error.includes('File too large')) {
+                    throw new Error(errorData.error);
+                  }
+                  throw new Error(`Download failed: ${errorData.error || 'Unknown error'}`);
+                });
+              }
+              throw new Error(`Download failed with status ${response.status}`);
+            }
+            return response.blob().then(blob => ({ blob, headers: response.headers }));
+          })
+          .then(({ blob, headers }) => {
+            const disposition = headers.get('Content-Disposition') || '';
+            let filename = "downloaded_file";
+            if (disposition.indexOf('filename=') !== -1) {
+              const filenameRegex = /filename[^;=\n]*=(['"]?)([^'"\n]*)\1/;
+              const matches = filenameRegex.exec(disposition);
+              if (matches != null && matches[2]) {
+                filename = matches[2];
+              }
+            }
+            const urlBlob = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = urlBlob;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(urlBlob);
+          })
+          .catch(error => {
+            window.showErrorModal(error.message);
+          })
+          .finally(() => {
+            setTimeout(() => {
+              resetDownloadIcon(downloadIcon);
+            }, 3000);
+          });
+      }
+      window.downloadFile = downloadFile;
+
+      // Copy handler for donation addresses
+      document.querySelectorAll('.donation-card').forEach(card => {
+        card.addEventListener('click', function() {
+          const isBtc = this.querySelector('#btc-address');
+          const addressEl = isBtc ? this.querySelector('#btc-address') : this.querySelector('#eth-address');
+          const titleEl = this.querySelector('.font-medium');
+          const originalText = titleEl.textContent;
+          
+          navigator.clipboard.writeText(addressEl.textContent).then(() => {
+            titleEl.textContent = 'copied!';
+            setTimeout(() => {
+              titleEl.textContent = originalText;
+            }, 2000);
+          }).catch(err => {
+            console.error('Failed to copy:', err);
+          });
+        });
+      });
+
+      // Add hover event listeners to tooltip icons
+      const tooltipIcons = document.querySelectorAll(`
+        .tooltip-wrapper .cursor-help, 
+        .tooltip-wrapper .cursor-pointer, 
+        .btn-filename-format .tooltip-wrapper .cursor-help,
+        .btn-filename-format .tooltip-wrapper .cursor-pointer
+      `);
+      tooltipIcons.forEach(icon => {
+        icon.addEventListener('mouseenter', (e) => {
+          const wrapper = e.target.closest('.tooltip-wrapper');
+          const tooltip = wrapper.querySelector('.tooltip');
+          if (tooltip) {
+            tooltip.style.visibility = 'visible';
+            tooltip.style.opacity = '1';
+            tooltip.style.transform = 'translateX(-50%) translateY(0)';
+          }
+        });
+        icon.addEventListener('mouseleave', (e) => {
+          const wrapper = e.target.closest('.tooltip-wrapper');
+          const tooltip = wrapper.querySelector('.tooltip');
+          if (tooltip) {
+            tooltip.style.visibility = 'hidden';
+            tooltip.style.opacity = '0';
+            tooltip.style.transform = 'translateX(-50%) translateY(10px)';
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
