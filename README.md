@@ -15,8 +15,8 @@ simple media downloader website inspired by an old version of cobalt.tools
 app will run on port 5000 by default!
 
 # supported sites
-youtube (video & audio)
-soundcloud (audio)
+youtube (video & audio) <br>
+soundcloud (audio) <br>
 tiktok (video & slideshows partially)
 
 # limits
