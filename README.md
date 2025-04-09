@@ -14,4 +14,4 @@ simple media downloader website inspired by an old version of cobalt.tools
 app will run on port 5000 by default!
 
 # inspiration
-triangle is insprired by cobalt.tools!
+triangle is inspired by cobalt.tools!
