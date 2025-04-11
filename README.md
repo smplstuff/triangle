@@ -24,7 +24,7 @@ tiktok (video & slideshows partially)
 300mb file size limit for youtube downloads (easily changable from app.py if using a self-hosted instance)
 
 # upcoming features
-proper tiktok slideshows download support (abillity to download audio and select multiple images)
+proper tiktok slideshows download support (abillity to download audio and select multiple images) <br>
 stream download
 
 # inspiration
