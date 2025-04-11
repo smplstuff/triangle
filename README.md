@@ -25,6 +25,7 @@ tiktok (video & slideshows partially)
 
 # upcoming features
 proper tiktok slideshows download support (abillity to download audio and select multiple images)
+stream download
 
 # inspiration
 triangle is inspired by cobalt.tools!
