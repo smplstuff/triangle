@@ -1,5 +1,5 @@
 # triangle
-simple media downloader website inspired by an old version of cobalt.tools
+simple media downloader website inspired by an old version of cobalt.tools that uses yt-dlp for downloading
 
 # powered by
 - flask
@@ -24,8 +24,7 @@ tiktok (video & slideshows partially)
 300mb file size limit for youtube downloads (easily changable from app.py if using a self-hosted instance)
 
 # upcoming features
-proper tiktok slideshows download support (abillity to download audio and select multiple images) <br>
-stream download
+this version is no longer being worked on!
 
 # inspiration
 triangle is inspired by cobalt.tools!
